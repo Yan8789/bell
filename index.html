@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- 確保在手機上全螢幕顯示，不可縮放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智慧門鈴道具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 鎖定畫面，防止手機瀏覽器預設的下拉刷新或滑動 */
+        body {
+            touch-action: none;
+            overflow: hidden;
+            background-color: #e5e7eb; /* 模擬水泥牆面背景 */
+            /* 加上一點牆壁的紋理感 */
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* 門鈴主體 */
+        .doorbell-body {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            box-shadow: 
+                20px 20px 60px #c1c3c6,
+                -20px -20px 60px #ffffff,
+                inset 0px 2px 4px rgba(255,255,255,0.1);
+            border: 2px solid #333;
+        }
+
+        /* 攝影機鏡頭反光效果 */
+        .camera-lens {
+            background: radial-gradient(circle at 30% 30%, #4a4a5a, #000 60%);
+            box-shadow: inset 0 0 10px rgba(0,0,0,1), 0 2px 5px rgba(255,255,255,0.1);
+        }
+        
+        .camera-lens::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 25%;
+            height: 25%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            filter: blur(1px);
+        }
+
+        /* 按鈕立體與按壓效果 */
+        .doorbell-button {
+            background: linear-gradient(145deg, #f3f4f6, #d1d5db);
+            box-shadow: 
+                0 12px 0 #9ca3af,
+                0 15px 25px rgba(0,0,0,0.5),
+                inset 0 -2px 5px rgba(0,0,0,0.1);
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 光環預設狀態 */
+        .led-ring {
+            box-shadow: inset 0 0 0 4px #e5e7eb;
+            transition: all 0.2s ease;
+        }
+
+        /* 按下時的狀態 */
+        .doorbell-button:active, .doorbell-button.pressed {
+            transform: translateY(10px);
+            box-shadow: 
+                0 2px 0 #9ca3af,
+                0 5px 10px rgba(0,0,0,0.5),
+                inset 0 -2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* 按下時光環發光 (藍光) */
+        .doorbell-button:active .led-ring, .doorbell-button.pressed .led-ring {
+            box-shadow: inset 0 0 0 6px #3b82f6, 0 0 20px #3b82f6, inset 0 0 15px #3b82f6;
+        }
+
+        .bell-icon {
+            transition: all 0.2s ease;
+            fill: #4b5563;
+        }
+
+        .doorbell-button:active .bell-icon, .doorbell-button.pressed .bell-icon {
+            fill: #1e3a8a;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center selection:bg-transparent">
+
+    <!-- 提示訊息 (點擊第一次後會消失) -->
+    <div id="hint" class="absolute top-10 text-gray-500 font-bold tracking-widest animate-pulse z-10 text-center px-4">
+        請將手機音量調到最大<br>並關閉靜音模式
+    </div>
+
+    <!-- 門鈴本體 -->
+    <div class="doorbell-body w-4/5 max-w-sm h-3/4 max-h-[700px] rounded-[3rem] flex flex-col items-center py-12 px-6 relative">
+        
+        <!-- 上方：鏡頭區 -->
+        <div class="w-full flex justify-center flex-col items-center mb-auto">
+            <!-- 鏡頭外框 -->
+            <div class="w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center p-2 shadow-[0_5px_15px_rgba(0,0,0,0.5)]">
+                <!-- 鏡頭玻璃 -->
+                <div class="camera-lens relative w-full h-full rounded-full border border-gray-800"></div>
+            </div>
+            <!-- 紅外線感測/麥克風小孔 -->
+            <div class="w-3 h-3 bg-black rounded-full mt-6 shadow-inner opacity-80"></div>
+            <div class="w-2 h-2 bg-black rounded-full mt-3 shadow-inner opacity-80"></div>
+        </div>
+
+        <!-- 下方：按鈕區 -->
+        <div class="w-full flex justify-center mb-10">
+            <!-- 實體按鈕 -->
+            <button id="doorbell-btn" class="doorbell-button relative w-40 h-40 rounded-full flex items-center justify-center outline-none cursor-pointer">
+                <!-- LED 光環 -->
+                <div class="led-ring absolute inset-0 rounded-full pointer-events-none"></div>
+                
+                <!-- 鈴鐺 Icon -->
+                <svg class="bell-icon w-16 h-16 pointer-events-none z-10" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16ZM16 17H8V11C8 8.52 9.51 6.5 12 6.5C14.49 6.5 16 8.52 16 11V17Z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 設定 AudioContext (延遲初始化以符合瀏覽器自動播放政策)
+        let audioCtx;
+
+        const btn = document.getElementById('doorbell-btn');
+        const hint = document.getElementById('hint');
+        let isFirstClick = true;
+
+        // 生成逼真的「叮咚」聲 (利用兩個正弦波頻率)
+        function playDingDong() {
+            if (!audioCtx) {
+                // 為了支援舊版 Safari
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+
+            // 如果被掛起，則恢復
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const t = audioCtx.currentTime;
+
+            // =================
+            // 第一聲：「叮」(G5 約 783.99 Hz)
+            // =================
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(783.99, t);
+            
+            // 聲音的包絡線 (Attack, Decay)
+            gain1.gain.setValueAtTime(0, t);
+            gain1.gain.linearRampToValueAtTime(1, t + 0.05); // 快速變大聲
+            gain1.gain.exponentialRampToValueAtTime(0.001, t + 1.2); // 慢慢淡出
+            
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            
+            osc1.start(t);
+            osc1.stop(t + 1.2);
+
+            // =================
+            // 第二聲：「咚」(E5 約 659.25 Hz)
+            // =================
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            
+            osc2.type = 'sine';
+            // 延遲 0.6 秒後發出「咚」
+            osc2.frequency.setValueAtTime(659.25, t + 0.6);
+            
+            gain2.gain.setValueAtTime(0, t + 0.6);
+            gain2.gain.linearRampToValueAtTime(1, t + 0.65);
+            gain2.gain.exponentialRampToValueAtTime(0.001, t + 2.5); // 殘響較長
+            
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            
+            osc2.start(t + 0.6);
+            osc2.stop(t + 2.5);
+        }
+
+        // 綁定事件：使用 pointerdown 確保滑鼠與觸控螢幕都能極速反應
+        btn.addEventListener('pointerdown', (e) => {
+            // 防止觸發瀏覽器預設行為
+            e.preventDefault();
+            
+            // 隱藏提示文字
+            if (isFirstClick) {
+                hint.style.display = 'none';
+                isFirstClick = false;
+            }
+
+            // 加上 CSS 類別強制顯示按下狀態（避免觸控設備有時 state:active 失靈）
+            btn.classList.add('pressed');
+            
+            // 播放聲音
+            playDingDong();
+        });
+
+        // 手指/滑鼠放開時恢復按鈕狀態
+        window.addEventListener('pointerup', () => {
+            btn.classList.remove('pressed');
+        });
+        
+        // 如果手指滑出按鈕範圍，也恢復狀態
+        btn.addEventListener('pointerleave', () => {
+            btn.classList.remove('pressed');
+        });
+
+    </script>
+</body>
+</html>
